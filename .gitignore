@@ -1,0 +1,35 @@
+# Project's own
+.ignore/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# IDEs / Editors
+.vscode/
+.idea/
+*.swp
+
+# Project Data & Results
+# -----------------------------------------------------------------------------
+# スクリプトによって生成されるデータファイルはリポジトリに含めません。
+# これらは非常に巨大になる可能性があります。
+# -----------------------------------------------------------------------------
+data/excel/*
+data/csv/*
+data/header_matrix.duckdb
+analysis/*
+
+# プレースホルダーファイルは無視しない設定 (空フォルダをGit管理するため)
+!data/excel/.gitkeep
+!data/csv/.gitkeep
+!analysis/.gitkeep
