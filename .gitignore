@@ -1,35 +1,42 @@
-# Project's own
-.ignore/
+# Python Virtual Environments
+env/
+venv/
+.venv/
 
-# Python
+# Python cache files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
 
-# OS-specific
+# OS-specific files
 .DS_Store
 Thumbs.db
 
-# IDEs / Editors
+# IDE / Editor specific files
 .vscode/
 .idea/
 *.swp
 
 # Project Data & Results
 # -----------------------------------------------------------------------------
-# スクリプトによって生成されるデータファイルはリポジトリに含めません。
-# これらは非常に巨大になる可能性があります。
+# Scripts generate these data files, which can be very large.
+# They should not be committed to the repository.
 # -----------------------------------------------------------------------------
 data/excel/*
 data/csv/*
+data/long_csv/*
+data/parquet/*
 data/header_matrix.duckdb
 analysis/*
 
-# プレースホルダーファイルは無視しない設定 (空フォルダをGit管理するため)
+# Keep empty directories by not ignoring .gitkeep files.
+# This helps new users understand the project structure.
 !data/excel/.gitkeep
 !data/csv/.gitkeep
+!data/long_csv/.gitkeep
+!data/parquet/.gitkeep
 !analysis/.gitkeep
+
+# Ignore temporary directories if you use them
+.tmp/

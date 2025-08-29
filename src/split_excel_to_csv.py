@@ -3,13 +3,12 @@ import glob
 import csv
 from openpyxl import load_workbook
 
-# (このファイルの中身は変更ありませんが、パスの確認のために再掲します)
 def clean_value(value):
     if value is None: return ""
     return str(value).replace('\n', ' ').replace('\r', ' ')
 
 def excel_to_full_csv(file_path, output_dir):
-    print(f"\n--- ファイル処理開始: {os.path.basename(file_path)} ---")
+    print(f"\n--- Excel -> CSV 変換開始: {os.path.basename(file_path)} ---")
     try:
         workbook = load_workbook(filename=file_path, read_only=True)
         for sheet_name in workbook.sheetnames:
@@ -25,26 +24,24 @@ def excel_to_full_csv(file_path, output_dir):
                     for row_cells in sheet.iter_rows():
                         current_row_values = [clean_value(cell.value) for cell in row_cells]
                         writer.writerow(current_row_values)
-                print(f"  -> ★★★ ファイルを作成しました: {output_filename} ★★★")
+                print(f"  -> ファイルを作成しました: {output_filename}")
             except Exception as e:
                 print(f"  -> エラー: CSV書き込み中に問題が発生: {e}")
     except Exception as e:
         print(f"  エラー: Excel読み込み中に問題が発生: {e}")
 
 if __name__ == "__main__":
-    print("★★★ ExcelからCSVへの直接変換処理を開始します ★★★")
+    print("★★★ ステップ1: ExcelからCSVへの変換処理を開始します ★★★")
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    
-    # ★★★ パス更新 ★★★
     excel_dir = os.path.join(project_root, 'data', 'excel')
     csv_dir = os.path.join(project_root, 'data', 'csv')
-    os.makedirs(csv_dir, exist_ok=True) # 出力フォルダがなければ作成
+    os.makedirs(csv_dir, exist_ok=True)
 
     excel_files = glob.glob(os.path.join(excel_dir, '*.xlsx'))
     if not excel_files:
-        print(f"\nエラー: '{excel_dir}' 内に処理対象のExcelファイル (.xlsx) が見つかりません。")
+        print(f"\n[エラー] '{excel_dir}' 内に処理対象のExcelファイル (.xlsx) が見つかりません。")
     else:
         print(f"\n対象ファイル: {[os.path.basename(f) for f in excel_files]}")
         for file_path in excel_files:
-            excel_to_full_csv(file_path, csv_dir) # 出力先をcsv_dirに変更
-        print("\n★★★ 全ての処理が完了しました ★★★")
+            excel_to_full_csv(file_path, csv_dir)
+        print("\n★★★ ステップ1が完了しました ★★★")
