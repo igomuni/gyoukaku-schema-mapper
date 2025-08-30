@@ -1,54 +1,61 @@
 import streamlit as st
-import duckdb
 import os
+import sys
+# 親ディレクトリをPythonのパスに追加して、srcモジュールをインポートできるようにする
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from src.retriever import HybridRetriever
+# from src.llm_handler import ask_llm # 将来的にLLM連携を別ファイルに分離
 
-st.set_page_config(page_title="ヘッダー分析アプリ", layout="wide")
+# --- ページ設定 ---
+st.set_page_config(page_title="Gyoukaku RAG System", layout="wide")
 
-# ★★★ パス更新 ★★★
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_FILEPATH = os.path.join(PROJECT_ROOT, 'data', 'header_matrix.duckdb')
+# --- グローバルなリソースのキャッシュ ---
+# Streamlitのキャッシュ機能を使って、重いモデルやインデックスのロードを
+# アプリケーションの初回起動時のみに限定する
+@st.cache_resource
+def load_retriever():
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    analysis_dir = os.path.join(project_root, 'analysis')
+    return HybridRetriever(analysis_dir)
 
-st.title("📊 行政事業レビューシート ヘッダー分析アプリ")
-st.write("`header_matrix.duckdb` データベースに対して、直接SQLクエリを実行できます。")
+# --- メインアプリケーション ---
+st.title(" Gyoukaku RAG System")
+st.write("行政事業レビューシートの内容について、自然言語で質問してください。")
 
-if not os.path.exists(DB_FILEPATH):
-    st.error(f"データベースファイルが見つかりません: {DB_FILEPATH}\n`python src/build_db.py` を実行してDBを構築してください。")
-else:
-    with st.sidebar:
-        st.header("データベース情報")
-        try:
-            con = duckdb.connect(database=DB_FILEPATH, read_only=True)
-            st.success("データベースに接続しました。")
-            table_info = con.execute("DESCRIBE header_matrix;").fetchdf()
-            st.write("`header_matrix` テーブルの構造:")
-            st.dataframe(table_info, use_container_width=True)
-            con.close()
-        except Exception as e:
-            st.error(f"DB情報取得エラー: {e}")
+# リトリーバーのロード（キャッシュが効く）
+try:
+    retriever = load_retriever()
 
-    st.header("SQL実行")
-    sample_query = """-- 各列名がいくつのファイルに登場するかを集計
-SELECT
-    column_name,
-    SUM(value::INTEGER) AS appearance_count
-FROM (
-    UNPIVOT header_matrix
-    ON * EXCLUDE (column_name)
-    INTO
-        NAME filename
-        VALUE value
-)
-GROUP BY column_name
-ORDER BY appearance_count DESC, column_name ASC;"""
-    query = st.text_area("実行したいSQLクエリを入力してください", value=sample_query, height=250)
+    # --- ユーザー入力 ---
+    user_query = st.text_input("質問を入力してください:", "随意契約の割合が高い事業について教えて")
 
-    if st.button("クエリを実行"):
-        with st.spinner("クエリ実行中..."):
-            try:
-                con = duckdb.connect(database=DB_FILEPATH, read_only=True)
-                result_df = con.execute(query).fetchdf()
-                con.close()
-                st.success(f"クエリが成功しました。{len(result_df)}行の結果が見つかりました。")
-                st.dataframe(result_df)
-            except Exception as e:
-                st.error(f"SQLの実行中にエラーが発生しました:\n\n{e}")
+    if st.button("検索を実行"):
+        if user_query:
+            with st.spinner("関連情報を検索中..."):
+                # 検索の実行
+                retrieved_docs = retriever.search(user_query, k=5)
+            
+            st.success("検索が完了しました。")
+
+            # --- 検索結果の表示 ---
+            st.subheader("検索された参考情報:")
+            for i, doc_contents in enumerate(retrieved_docs, 1):
+                with st.expander(f"参考情報 {i}"):
+                    # ★★★ 変更点: 全文ではなく、最初の500文字だけを表示 ★★★
+                    st.write(doc_contents[:500] + "...") 
+                                
+            # --- LLMへの連携 (この部分はまだダミー) ---
+            st.subheader("AIによる回答生成:")
+            with st.spinner("AIが回答を生成中です..."):
+                # TODO: ここでretrieved_docsをコンテキストとしてLLMに渡し、回答を生成する
+                # context = "。 ".join(retrieved_docs)
+                # answer = ask_llm(user_query, context) # ask_llmは別途実装が必要
+                st.info("現在、LLM連携機能は開発中です。上記の参考情報を元に回答を生成します。")
+                st.write("（ここに将来、GeminiやChatGPTからの回答が表示されます）")
+
+        else:
+            st.warning("質問を入力してください。")
+
+except Exception as e:
+    st.error(f"アプリケーションの初期化中にエラーが発生しました: {e}")
+    st.error("必要なインデックスファイルが `analysis` フォルダに存在するか確認してください。")
