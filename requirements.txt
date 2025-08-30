@@ -1,5 +1,17 @@
+# Core Data Handling
 pandas
 openpyxl
 duckdb
+
+# Web Application
 streamlit
+
+# Utility
 tqdm
+
+# RAG - Search & NLP
+pyserini==0.24.0
+faiss-cpu
+sentence-transformers
+sudachipy
+sudachidict_core
