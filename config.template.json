@@ -1,0 +1,15 @@
+{
+  "paths": {
+    "analysis_dir": "analysis",
+    "preprocessed_corpus": "analysis/preprocessed_for_pyserini.jsonl",
+    "pyserini_index": "analysis/pyserini_index",
+    "faiss_index": "analysis/faiss_index.bin",
+    "faiss_id_mapping": "analysis/faiss_id_mapping.json"
+  },
+  "pyserini": {
+    "threads": 8
+  },
+  "faiss": {
+    "sentence_transformer_model": "sonoisa/sentence-luke-japanese-base-lite"
+  }
+}

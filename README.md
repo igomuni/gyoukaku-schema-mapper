@@ -60,6 +60,10 @@ gyoukaku-schema-mapper/
    pip install -r requirements.txt
    ```
 
+4. **設定ファイルの作成**
+   プロジェクトのルートにある`config.template.json`をコピーして、`config.json`という名前でファイルを作成します。
+   作成した`config.json`を開き、`anserini_jar_path`の値を、あなたのPC環境におけるAnseriniの`.jar`ファイルへの正しいフルパスに書き換えてください。
+
 ## 実行ワークフロー
 
 以下の順番でスクリプトを実行し、データを変換します。

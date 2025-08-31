@@ -18,6 +18,9 @@ Thumbs.db
 .idea/
 *.swp
 
+# Configuration files with secrets or local paths
+config.json
+
 # Project Data & Results
 # -----------------------------------------------------------------------------
 # Scripts generate these data files, which can be very large.
