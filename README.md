@@ -8,40 +8,63 @@
 
 ## プロジェクト構成
 
-このリポジトリの主要なスクリプトとデータ構造は以下の通りです。
+このリポジトリの主要なファイルとディレクトリ構造は以下の通りです。
 
 ```
 gyoukaku-schema-mapper/
-├── src/                          # ETLおよび分析スクリプト群
-│   ├── split_excel_to_csv.py       # Step 1: Excel -> 生CSV
-│   ├── unpivot_csv_to_long_csv.py  # Step 2: 生CSV -> 縦長CSV (Streaming)
-│   ├── convert_long_csv_to_parquet.py # Step 3: 縦長CSV -> Parquet
-│   ├── transform_parquet_to_load_db.py # Step 4: Parquet -> 構造化DBテーブル
-│   │
-│   ├── build_search_docs.py        # RAG Step 1: 検索ドキュメント作成
-│   ├── preprocess_docs.py          # RAG Step 2a: SudachiPy前処理
-│   ├── build_pyserini_index.py     # RAG Step 2b: BM25インデックス構築
-│   └── build_faiss_index.py        # RAG Step 2c: Faissベクトルインデックス構築
-│
-├── streamlit_app/                # Streamlit Webアプリ
-│   └── app.py
-├── data/                           # データ格納庫 (Git管理外)
-│   ├── excel/                      # 入力: 元のExcelファイル
-│   ├── csv/                        # 中間: 生CSVファイル
-│   ├── long_csv/                   # 中間: 縦長CSVファイル
-│   ├── parquet/                    # 中間: 最適化済みParquetファイル
-│   └── header_matrix.duckdb        # 出力: 最終分析用データベース
-│
-├── analysis/                       # 分析成果物 (インデックス等)
-│   ├── header_comparison_matrix.csv
-│   └── ...
-└── doc/                            # ドキュメント
-    └── windows_setup_guide.md      # Windows環境構築ガイド
+├── .gitignore
+├── LICENSE
+├── README.md
+├── config.template.json
+├── requirements.txt
+├── analysis/
+│   └── .gitkeep
+├── data/
+│   ├── csv/
+│   │   └── .gitkeep
+│   ├── excel/
+│   │   └── .gitkeep
+│   ├── long_csv/
+│   │   └── .gitkeep
+│   └── parquet/
+│       └── .gitkeep
+├── doc/
+│   ├── rag_pipeline_guide.md
+│   └── windows_setup_guide.md
+├── src/
+│   ├── analyze_header_matrix.py
+│   ├── build_faiss_index.py
+│   ├── build_header_matrix_db.py
+│   ├── build_search_docs.py
+│   ├── chunk_preprocessed_docs.py
+│   ├── convert_long_csv_to_parquet.py
+│   ├── create_header_matrix.py
+│   ├── preprocess_docs.py
+│   ├── retriever.py
+│   ├── split_excel_to_csv.py
+│   ├── transform_parquet_to_load_db.py
+│   ├── unpivot_csv_to_long_csv.py
+│   ├── verify_and_classify_headers.py
+│   └── verify_search_docs.py
+└── streamlit_app/
+    └── app.py
 ```
+
+#### 各ディレクトリの役割
+
+- **`src/`**: 全てのPythonスクリプトを格納するメインのソースコードディレクトリ。
+- **`streamlit_app/`**: Streamlit製のWebアプリケーション本体。
+- **`data/`**: ETLプロセスにおける各段階のデータを格納する場所 (Git管理外)。
+  - `excel/`: 入力となる元のExcelファイル。
+  - `csv/`: Excelから変換された生CSV。
+  - `long_csv/`: 縦長に変換された中間CSV。
+  - `parquet/`: 最適化されたParquet形式の中間データ。
+- **`analysis/`**: RAGインデックスや分析結果など、最終的な成果物を格納する場所 (Git管理外)。
+- **`doc/`**: セットアップ手順やパイプラインの実行手順など、プロジェクトに関するドキュメント。
 
 ## セットアップ
 
-1. **リポジトリのクローン**
+1. **リポジトリのクローンと移動**
    ```bash
    git clone [リポジトリのURL]
    cd gyoukaku-schema-mapper
@@ -49,7 +72,6 @@ gyoukaku-schema-mapper/
 
 2. **環境構築**
    *   **Windowsユーザーへの注意:** このプロジェクトのAIライブラリ群は、Windows環境で特別なセットアップを必要とします。まず **[Windowsセットアップガイド](doc/windows_setup_guide.md)** を参照して、C++ビルドツール、Java 21、およびConda環境を構築してください。
-   *   **macOS / Linuxユーザー:** `requirements.txt`に基づく標準的なPython環境構築で動作する可能性が高いですが、必要に応じてJavaのバージョン等を調整してください。
 
 3. **ライブラリのインストール (Conda環境推奨)**
    ```bash
@@ -61,46 +83,35 @@ gyoukaku-schema-mapper/
    ```
 
 4. **設定ファイルの作成**
-   プロジェクトのルートにある`config.template.json`をコピーして、`config.json`という名前でファイルを作成します。
-   作成した`config.json`を開き、`anserini_jar_path`の値を、あなたのPC環境におけるAnseriniの`.jar`ファイルへの正しいフルパスに書き換えてください。
+   プロジェクトのルートにある`config.template.json`をコピーして、`config.json`という名前でファイルを作成します。現時点では特に編集は不要です。
 
 ## 実行ワークフロー
 
+### 1. ETLパイプライン (Excel -> 構造化DB)
+
 以下の順番でスクリプトを実行し、データを変換します。
 
-1. **Excelファイルの配置**: `data/excel/` フォルダに、分析したい `.xlsx` ファイルを配置します。
+```bash
+# Step 1: Excelから生CSVへ変換
+python src/split_excel_to_csv.py
 
-2. **ETLパイプラインの実行**:
-   ```bash
-   # Step 1: Excelから生CSVへ変換
-   python src/split_excel_to_csv.py
+# Step 2: 生CSVを縦長CSVに変換 (ストリーミング処理)
+python src/unpivot_csv_to_long_csv.py
 
-   # Step 2: 生CSVを縦長CSVに変換 (ストリーミング処理)
-   python src/unpivot_csv_to_long_csv.py
+# Step 3: 縦長CSVをParquet形式に最適化
+python src/convert_long_csv_to_parquet.py
 
-   # Step 3: 縦長CSVをParquet形式に最適化
-   python src/convert_long_csv_to_parquet.py
+# Step 4: Parquetを読み込み、構造化してDBにロード
+python src/transform_parquet_to_load_db.py
+```
 
-   # Step 4: Parquetを読み込み、構造化してDBにロード
-   python src/transform_parquet_to_load_db.py
-   ```
+### 2. RAGインデックスの構築
 
-3. **RAGインデックスの構築**:
-   ```bash
-   # Step 5: 検索ドキュメントの作成
-   python src/build_search_docs.py
+ETLパイプラインが完了した後、検索インデックスを構築します。
+詳細な手順は **[RAGパイプライン構築手順書](doc/rag_pipeline_guide.md)** を参照してください。
 
-   # Step 6a: BM25用前処理
-   python src/preprocess_docs.py
+### 3. 分析Webアプリの起動
 
-   # Step 6b: BM25インデックス構築
-   python src/build_pyserini_index.py
-   
-   # Step 6c: Faissインデックス構築
-   python src/build_faiss_index.py
-   ```
-
-4. **分析Webアプリの起動**:
-   ```bash
-   streamlit run streamlit_app/app.py
-   ```
+```bash
+streamlit run streamlit_app/app.py
+```
