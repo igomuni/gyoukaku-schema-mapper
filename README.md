@@ -6,6 +6,13 @@
 
 手動での開封が困難な巨大Excelを安全にCSVへ変換し、年度ごとに異なる混沌としたヘッダー（列名）の構造を解明・可視化（マッピング）します。最終的には、ETLパイプラインを通じてクリーンなデータを生成し、RAG（Retrieval-Augmented Generation）システムによるAI検索基盤を構築することを目的とします。
 
+## 主な機能
+
+- **堅牢なETLパイプライン**: 巨大Excelを、ストリーミング処理と中間フォーマット（Parquet）を活用して、メモリに依存しない形で、分析可能な構造化データベース（DuckDB）に変換します。
+- **データプロファイリング**: 変換過程のデータの特性（列数、セル長分布など）を詳細に分析し、可視化するためのインタラクティブなダッシュボードを提供します。
+- **ハイブリッド検索インデックス構築**: キーワード検索（BM25/Pyserini）とベクトル検索（Faiss）の両方のための、高度な検索インデックスを構築します。
+- **RAGアプリケーション**: 構築したインデックスを活用し、自然言語での質問応答を可能にするStreamlit製のWebアプリケーションプロトタイプ。
+
 ## プロジェクト構成
 
 このリポジトリの主要なファイルとディレクトリ構造は以下の通りです。
@@ -32,6 +39,8 @@ gyoukaku-schema-mapper/
 │   ├── rag_pipeline_guide.md
 │   └── windows_setup_guide.md
 ├── src/
+│   ├── analyze_csv_metrics.py
+│   ├── analyze_data_distribution.py
 │   ├── analyze_header_matrix.py
 │   ├── build_faiss_index.py
 │   ├── build_header_matrix_db.py
@@ -39,6 +48,7 @@ gyoukaku-schema-mapper/
 │   ├── chunk_preprocessed_docs.py
 │   ├── convert_long_csv_to_parquet.py
 │   ├── create_header_matrix.py
+│   ├── llm_handler.py
 │   ├── preprocess_docs.py
 │   ├── retriever.py
 │   ├── split_excel_to_csv.py
@@ -47,20 +57,9 @@ gyoukaku-schema-mapper/
 │   ├── verify_and_classify_headers.py
 │   └── verify_search_docs.py
 └── streamlit_app/
-    └── app.py
+    ├── app.py
+    └── report_viewer.py
 ```
-
-#### 各ディレクトリの役割
-
-- **`src/`**: 全てのPythonスクリプトを格納するメインのソースコードディレクトリ。
-- **`streamlit_app/`**: Streamlit製のWebアプリケーション本体。
-- **`data/`**: ETLプロセスにおける各段階のデータを格納する場所 (Git管理外)。
-  - `excel/`: 入力となる元のExcelファイル。
-  - `csv/`: Excelから変換された生CSV。
-  - `long_csv/`: 縦長に変換された中間CSV。
-  - `parquet/`: 最適化されたParquet形式の中間データ。
-- **`analysis/`**: RAGインデックスや分析結果など、最終的な成果物を格納する場所 (Git管理外)。
-- **`doc/`**: セットアップ手順やパイプラインの実行手順など、プロジェクトに関するドキュメント。
 
 ## セットアップ
 
@@ -87,7 +86,19 @@ gyoukaku-schema-mapper/
 
 ## 実行ワークフロー
 
-### 1. ETLパイプライン (Excel -> 構造化DB)
+### 1. データ分析 (オプション)
+
+データの特性を理解するために、以下の分析スクリプトを実行できます。
+
+```bash
+# CSVの基本メトリクスを集計
+python src/analyze_csv_metrics.py
+
+# CSVのデータ分布を詳細に分析
+python src/analyze_data_distribution.py
+```
+
+### 2. ETLパイプライン (Excel -> 構造化DB)
 
 以下の順番でスクリプトを実行し、データを変換します。
 
@@ -105,12 +116,26 @@ python src/convert_long_csv_to_parquet.py
 python src/transform_parquet_to_load_db.py
 ```
 
-### 2. RAGインデックスの構築
+### 3. RAGインデックスの構築
 
 ETLパイプラインが完了した後、検索インデックスを構築します。
 詳細な手順は **[RAGパイプライン構築手順書](doc/rag_pipeline_guide.md)** を参照してください。
 
-### 3. 分析Webアプリの起動
+### 4. アプリケーションの起動
+
+プロジェクトには2つのアプリケーションが含まれています。
+
+#### 4a. データ分布分析ビューアー
+
+ETL過程で生成されたデータの分布をインタラクティブに分析します。
+
+```bash
+streamlit run streamlit_app/report_viewer.py
+```
+
+#### 4b. RAGシステム本体
+
+構築したインデックスを使い、自然言語での質問応答を行います。
 
 ```bash
 streamlit run streamlit_app/app.py
