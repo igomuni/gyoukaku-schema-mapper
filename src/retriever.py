@@ -7,9 +7,9 @@ from sentence_transformers import SentenceTransformer
 from sudachipy import tokenizer, dictionary
 
 class HybridRetriever:
-    def __init__(self, analysis_dir, pyserini_index_name="pyserini_index_75"):
+    def __init__(self, analysis_dir, pyserini_index_name="pyserini_index"):
+        # ... (__init__メソッドは変更なし) ...
         print("ハイブリッド検索システムを初期化中...")
-        
         pyserini_index_path = os.path.join(analysis_dir, pyserini_index_name)
         faiss_index_path = os.path.join(analysis_dir, "faiss_index.bin")
         id_mapping_path = os.path.join(analysis_dir, "faiss_id_mapping.json")
@@ -44,7 +44,7 @@ class HybridRetriever:
         
         print("--- 初期化が完了しました ---")
 
-    # ★★★ 修正点: このメソッド全体を1レベルインデントする ★★★
+
     def search(self, query, k=5):
         print(f"\nクエリ「{query}」でハイブリッド検索を実行...")
 
@@ -54,14 +54,24 @@ class HybridRetriever:
         
         bm25_results = []
         for hit in bm25_hits:
+            hit_id = hit.docid
+            
+            # ★★★ 変更点: チャンク化されたIDを正規化 ★★★
+            # もしIDに "_chunk_" が含まれていたら、それより前の部分を親IDとして使う
+            if "_chunk_" in hit_id:
+                parent_id = hit_id.split("_chunk_")[0]
+            else:
+                parent_id = hit_id
+            
             bm25_results.append({
-                "id": hit.docid,
+                "id": parent_id, # ここでは親IDを結果として保持
                 "score": hit.score,
-                "contents": self.doc_store.get(hit.docid, "")
+                "contents": self.doc_store.get(parent_id, "") # 親IDでdoc_storeを検索
             })
-        print(f" -> BM25検索結果: {[res['id'] for res in bm25_results]}")
+        print(f" -> BM25検索結果 (正規化後ID): {[res['id'] for res in bm25_results]}")
 
         # --- b. ベクトル検索 (Faiss) ---
+        # (この部分は変更なし)
         query_embedding = self.st_model.encode([query], show_progress_bar=False)
         distances, indices = self.faiss_index.search(query_embedding.astype('float32'), k)
         
@@ -77,6 +87,7 @@ class HybridRetriever:
         print(f" -> Faiss検索結果: {[res['id'] for res in faiss_results]}")
 
         # --- c. 結果の統合 ---
+        # (この部分は変更なし)
         final_results = {}
         for res in bm25_results + faiss_results:
             if res['id'] not in final_results:
