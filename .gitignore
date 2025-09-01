@@ -43,3 +43,6 @@ analysis/*
 
 # Ignore temporary directories if you use them
 .tmp/
+
+# Secrets file
+.streamlit/secrets.toml
